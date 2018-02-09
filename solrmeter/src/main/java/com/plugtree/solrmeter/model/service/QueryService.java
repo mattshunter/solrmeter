@@ -15,6 +15,8 @@
  */
 package com.plugtree.solrmeter.model.service;
 
+import java.io.IOException;
+
 import org.apache.solr.client.solrj.response.QueryResponse;
 
 import com.plugtree.solrmeter.model.exception.QueryException;
@@ -35,6 +37,6 @@ public interface QueryService {
 			String sortOrder,
 			Integer rows,
 			Integer start,
-			String otherParams) throws QueryException;
+			String otherParams) throws QueryException, IOException;
 
 }

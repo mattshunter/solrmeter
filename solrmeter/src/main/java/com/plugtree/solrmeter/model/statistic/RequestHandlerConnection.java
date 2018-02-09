@@ -15,7 +15,6 @@
  */
 package com.plugtree.solrmeter.model.statistic;
 
-import static java.util.Arrays.stream;
 import static java.util.Optional.ofNullable;
 
 import java.io.IOException;
@@ -25,17 +24,21 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.log4j.Logger;
+import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.SolrResponse;
-import org.apache.solr.client.solrj.SolrServer;
 import org.apache.solr.client.solrj.SolrServerException;
+import org.apache.solr.client.solrj.request.CollectionAdminRequest;
+import org.apache.solr.client.solrj.response.CollectionAdminResponse;
 import org.apache.solr.client.solrj.response.SolrPingResponse;
 import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.ContentStream;
 import org.apache.solr.common.util.NamedList;
+import org.jfree.util.Log;
 
 import com.google.inject.Inject;
 import com.plugtree.solrmeter.model.SolrMeterConfiguration;
@@ -50,36 +53,46 @@ import com.plugtree.solrmeter.model.exception.StatisticConnectionException;
 public class RequestHandlerConnection extends AbstractStatisticConnection {
 	private static final String SINGLE_COLLECTION = "SINGLE_COLLECTION";
 
-	private static final String collectionsStr = SolrMeterConfiguration.getProperty("solr.collection.names", null);
-	
 	private final static Logger logger = Logger.getLogger(RequestHandlerConnection.class);
 
-	private static final List<String> collections;
+	private static List<String> collections;
 	
-	private Map<String, SolrServer> solrServer;
-	
-	static {
-		List<String> _collections = new ArrayList<>();
-		stream(ofNullable(collectionsStr).orElse(SINGLE_COLLECTION).split("\\,")).map(String::trim).forEach(_collections::add);
-		collections = Collections.unmodifiableList(_collections);
-	}
+	private Map<String, SolrClient> solrServer;
 	
 	@Inject
 	public RequestHandlerConnection() {
-		this(
-			new HashMap<String, SolrServer>() {{
-				collections.forEach(collectionName -> {
-				put(collectionName, 
-						SolrServerRegistry.getSolrServer(SolrMeterConfiguration.getProperty(SolrMeterConfiguration.SOLR_SEARCH_URL) 
-							+ (collectionName.equals(SINGLE_COLLECTION) ? "" : collectionName)));
-				});
-			}}
-		);
+		String serverURL = SolrMeterConfiguration.getProperty(SolrMeterConfiguration.SOLR_SEARCH_URL);
+		System.out.println("Creating solr client at " + serverURL);
+		SolrClient client = SolrServerRegistry.getSolrServer(serverURL);
+
+		try {
+			System.out.println("Made it here.");
+			CollectionAdminResponse response = new CollectionAdminRequest.List().process(client);
+			System.out.println("Made it here 2.");
+			List<String> collectionNames = new ArrayList<>((Collection<String>) response.getResponse().get("collections"));
+			System.out.println("Made it here 3.");
+			solrServer = new HashMap<>();
+			collectionNames.forEach(name -> {
+				solrServer.put(name, SolrServerRegistry.getSolrServer(serverURL + ofNullable(name).orElse("")));
+			});
+			System.out.println("Made it here 4.");
+			collections = Collections.unmodifiableList(collectionNames);
+			System.out.println("Collection names: " + collectionNames);
+		} catch (Throwable e) {
+			logger.warn("Couldn't fetch collection names.  Is this a single collection instance of Solr?");
+		}
+		
+		if (solrServer == null) {
+			solrServer = new HashMap<>();
+			collections = Collections.emptyList();
+			solrServer.put(SINGLE_COLLECTION, client);
+		}
 	}
 	
-	public RequestHandlerConnection(Map<String, SolrServer> solrServer) {
+	public RequestHandlerConnection(Map<String, SolrClient> solrServer) {
 		super();
 		this.solrServer = solrServer;
+		this.collections = Collections.unmodifiableList(solrServer.keySet().stream().collect(Collectors.toList()));
 	}
 	
 	public Map<String, Map<String, CacheData>> getData() throws StatisticConnectionException {
@@ -140,6 +153,10 @@ public class RequestHandlerConnection extends AbstractStatisticConnection {
 		return data;
 	}
 	
+	public  List<String> getCollections() {
+		return collections;
+	}
+
 	private class MBeanRequest extends SolrRequest {
 		
 		private static final long serialVersionUID = 1L;
@@ -160,15 +177,15 @@ public class RequestHandlerConnection extends AbstractStatisticConnection {
 			params.set("stats", "true");
 		}
 
-		@Override
-		public SolrResponse process(SolrServer server) throws SolrServerException,
-				IOException {
-			long startTime = System.currentTimeMillis();
-		    SolrPingResponse res = new SolrPingResponse();
-		    res.setResponse( server.request( this ) );
-		    res.setElapsedTime( System.currentTimeMillis()-startTime );
-		    return res;
-		}
+//		@Override
+//		public SolrResponse process(SolrClient server) throws SolrServerException,
+//				IOException {
+//			long startTime = System.currentTimeMillis();
+//		    SolrPingResponse res = new SolrPingResponse();
+//		    res.setResponse( server.request( this ) );
+//		    res.setElapsedTime( System.currentTimeMillis()-startTime );
+//		    return res;
+//		}
 		
 		@Override
 		public SolrParams getParams() {
@@ -178,6 +195,21 @@ public class RequestHandlerConnection extends AbstractStatisticConnection {
 		@Override
 		public Collection<ContentStream> getContentStreams() throws IOException {
 			return null;
+		}
+
+		@Override
+		protected SolrResponse createResponse(SolrClient client) {
+			long startTime = System.currentTimeMillis();
+		    SolrPingResponse res = new SolrPingResponse();
+		    
+		    try {
+				res.setResponse(client.request( this ) );
+			} catch (SolrServerException | IOException e) {
+				e.printStackTrace();
+			}
+		    
+		    res.setElapsedTime( System.currentTimeMillis()-startTime );
+		    return res;
 		}
 	}
 

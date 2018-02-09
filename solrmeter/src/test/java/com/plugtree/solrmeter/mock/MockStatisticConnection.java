@@ -15,7 +15,9 @@
  */
 package com.plugtree.solrmeter.mock;
 
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.plugtree.solrmeter.model.exception.StatisticConnectionException;
@@ -47,6 +49,11 @@ public class MockStatisticConnection extends AbstractStatisticConnection {
 	@Override
 	public Map<String, Map<String, CacheData>> getData() throws StatisticConnectionException {
 		return data;
+	}
+
+	@Override
+	public List<String> getCollections() {
+		return Collections.emptyList();
 	}
 
 }

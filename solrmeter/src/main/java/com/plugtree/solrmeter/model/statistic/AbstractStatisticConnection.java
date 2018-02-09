@@ -15,6 +15,7 @@
  */
 package com.plugtree.solrmeter.model.statistic;
 
+import java.util.List;
 import java.util.Map;
 
 import com.plugtree.solrmeter.model.exception.StatisticConnectionException;
@@ -72,4 +73,6 @@ public abstract class AbstractStatisticConnection {
 	public CacheData getCumulativeQueryResultCacheData(Map<String, CacheData> map) {
 		return map.get(CUMULATIVE_QUERY_RESULT_CACHE_NAME);
 	}
+	
+	public abstract List<String> getCollections();
 }

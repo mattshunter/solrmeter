@@ -46,7 +46,12 @@ public class SolrMeterMain {
 		addPlugins(new ExpectedParameter(args, "statisticsLocation", "./plugins").getValue());
 		createInjector();
         runMode = injector.getInstance(SolrMeterRunMode.class);
-        runMode.main(injector);
+        try {
+        	runMode.main(injector);
+        } catch (Throwable t) {
+        	t.fillInStackTrace();
+        	t.printStackTrace();
+        }
         mainFrame = runMode.getMainFrame();
 	}
 	

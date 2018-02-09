@@ -15,9 +15,11 @@
  */
 package com.plugtree.solrmeter.model.service.impl;
 
+import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.client.solrj.SolrQuery.ORDER;
 import org.apache.solr.client.solrj.SolrServer;
@@ -41,8 +43,8 @@ public class QueryServiceSolrJImpl implements QueryService {
 	@Override
 	public QueryResponse executeQuery(String q, String fq, String qt,
 			boolean highlight, String facetFields, String sort, String sortOrder, Integer rows, Integer start, 
-			String otherParams) throws QueryException {
-		SolrServer server = SolrServerRegistry.getSolrServer(SolrMeterConfiguration.getProperty(SolrMeterConfiguration.SOLR_SEARCH_URL));
+			String otherParams) throws QueryException, IOException {
+		SolrClient server = SolrServerRegistry.getSolrServer(SolrMeterConfiguration.getProperty(SolrMeterConfiguration.SOLR_SEARCH_URL));
 		SolrQuery query = this.createQuery(q, fq, qt, highlight, facetFields, sort, sortOrder, rows, start, otherParams);
 		QueryResponse response = null;
 		try {
@@ -66,8 +68,10 @@ public class QueryServiceSolrJImpl implements QueryService {
 				query.addFilterQuery(filterQuery);
 			}
 		}
+		
+		// qt is a little confusing here...it's not the request handler name that's specified using the qt request parameter
 		if(qt != null) {
-			query.setQueryType(qt);
+			query.set("defType", qt);
 		}
 		query.setHighlight(highlight);
 		if(facetFields == null || "".equals(facetFields)) {
@@ -80,7 +84,7 @@ public class QueryServiceSolrJImpl implements QueryService {
 			}
 		}
 		if(sort != null && !"".equals(sort)) {
-			query.setSortField(sort, ORDER.valueOf(sortOrder));
+			query.setSort(sort, ORDER.valueOf(sortOrder));
 		}
 		if(rows != null && rows < 0) {
 			throw new QueryException("Rows can't be less than 0");
@@ -99,6 +103,8 @@ public class QueryServiceSolrJImpl implements QueryService {
 				query.add(getParamName(param), getParamValue(param));
 			}
 		}
+		
+		query.set("wt", "javabin");
 		return query;
 	}
 

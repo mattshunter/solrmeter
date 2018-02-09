@@ -15,10 +15,6 @@
  */
 package com.plugtree.solrmeter.model.statistic;
 
-import static java.util.Arrays.stream;
-import static java.util.Optional.ofNullable;
-
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -31,10 +27,8 @@ import org.apache.solr.client.solrj.response.QueryResponse;
 
 import com.google.inject.Inject;
 import com.plugtree.solrmeter.model.QueryStatistic;
-import com.plugtree.solrmeter.model.SolrMeterConfiguration;
 import com.plugtree.solrmeter.model.exception.QueryException;
 import com.plugtree.solrmeter.model.exception.StatisticConnectionException;
-import com.plugtree.solrmeter.view.statistic.CacheHistoryPanel;
 import com.plugtree.stressTestScope.StressTestScope;
 
 /**
@@ -45,13 +39,10 @@ import com.plugtree.stressTestScope.StressTestScope;
  */
 @StressTestScope
 public class CacheHistoryStatistic implements QueryStatistic {
-	private static final String SINGLE_COLLECTION = "SINGLE_COLLECTION";
 	
 	private final static Logger logger = Logger.getLogger(CacheHistoryStatistic.class);
 
-	private static final String collectionsStr = SolrMeterConfiguration.getProperty("solr.collection.names", null);
-
-	private static final List<String> collections;
+	private List<String> collections;
 
 	/**
 	 * Stores the historical data of the filterCache
@@ -112,17 +103,13 @@ public class CacheHistoryStatistic implements QueryStatistic {
 	
 	private StatisticUpdateThread updateThread;
 	
-	static {
-		List<String> _collections = new ArrayList<>();
-		stream(ofNullable(collectionsStr).orElse(SINGLE_COLLECTION).split("\\,")).map(String::trim).forEach(_collections::add);
-		collections = Collections.unmodifiableList(_collections);
-	}
-	
 	@Inject
 	public CacheHistoryStatistic(AbstractStatisticConnection connection) {
 		super();
 		
 		this.connection = connection;
+		
+		collections = connection.getCollections();
 		
 		collections.forEach(collection -> {
 			filterCacheData = new HashMap<>();
@@ -207,6 +194,16 @@ public class CacheHistoryStatistic implements QueryStatistic {
 	
 	public Map<String, SortedMap<Long, CacheData>> getDocumentCacheData() {
 		return documentCacheData;
+	}
+
+
+	public List<String> getCollections() {
+		return collections;
+	}
+
+
+	public void setCollections(List<String> collections) {
+		this.collections = collections;
 	}
 
 

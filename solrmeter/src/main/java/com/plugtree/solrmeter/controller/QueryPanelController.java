@@ -15,6 +15,7 @@
  */
 package com.plugtree.solrmeter.controller;
 
+import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -53,7 +54,8 @@ public class QueryPanelController {
 			public void run() {
 				try {
 				    logger.info("Executing Query");
-					QueryResponse response = service.executeQuery(view.getQ(), 
+					QueryResponse response = 
+						service.executeQuery(view.getQ(), 
 							view.getFQ(), 
 							view.getQT(), 
 							view.getHighlight(), 
@@ -64,7 +66,7 @@ public class QueryPanelController {
 							view.getStart(),
 							view.getOtherParams());
 					view.showResults(response);
-				} catch (QueryException e) {
+				} catch (QueryException | IOException e) {
 					view.showError(e);
 				}
 			}

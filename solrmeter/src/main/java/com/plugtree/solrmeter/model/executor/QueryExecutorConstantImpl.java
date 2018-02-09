@@ -18,6 +18,7 @@ package com.plugtree.solrmeter.model.executor;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrServer;
 import org.apache.solr.client.solrj.response.QueryResponse;
 
@@ -42,12 +43,12 @@ import com.plugtree.stressTestScope.StressTestScope;
  *
  */
 @StressTestScope
-public class QueryExecutorConstantImpl implements QueryExecutor{
+public class QueryExecutorConstantImpl implements QueryExecutor {
 	
 	/**
 	 * Solr Server for strings
 	 */
-	private SolrServer server;
+	private SolrClient server;
 	
 	/**
 	 * List of Statistics observing this Executor.
@@ -85,7 +86,7 @@ public class QueryExecutorConstantImpl implements QueryExecutor{
 	}
 
 	@Override
-	public synchronized SolrServer getSolrServer() {
+	public synchronized SolrClient getSolrServer() {
 		if(server == null) {
 			server = SolrServerRegistry.getSolrServer(SolrMeterConfiguration.getProperty(SolrMeterConfiguration.SOLR_SEARCH_URL));
 		}

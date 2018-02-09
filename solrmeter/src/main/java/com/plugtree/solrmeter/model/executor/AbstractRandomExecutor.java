@@ -19,6 +19,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import org.apache.log4j.Logger;
+import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrServer;
 
 import com.plugtree.solrmeter.model.FileUtils;
@@ -169,7 +170,7 @@ public abstract class AbstractRandomExecutor {
 	 * @return Return the Solr Server instance for the url. There is only one 
 	 * Solr Server for every difFerent url
 	 */
-	public SolrServer getSolrServer(String url) {
+	public SolrClient getSolrServer(String url) {
 		return SolrServerRegistry.getSolrServer(url);
 	}
 

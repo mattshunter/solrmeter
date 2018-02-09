@@ -16,7 +16,6 @@
 package com.plugtree.solrmeter.view.statistic;
 
 import static java.util.Arrays.stream;
-import static java.util.Optional.ofNullable;
 
 import java.awt.Component;
 import java.awt.Dimension;
@@ -25,12 +24,12 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.SortedMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -48,12 +47,11 @@ import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
+import org.jfree.chart.ui.RectangleEdge;
 import org.jfree.data.Range;
 import org.jfree.data.xy.DefaultXYDataset;
-import org.jfree.ui.RectangleEdge;
 
 import com.google.inject.Inject;
-import com.plugtree.solrmeter.model.SolrMeterConfiguration;
 import com.plugtree.solrmeter.model.statistic.CacheData;
 import com.plugtree.solrmeter.model.statistic.CacheHistoryStatistic;
 import com.plugtree.solrmeter.view.I18n;
@@ -73,11 +71,9 @@ public class CacheHistoryPanel extends StatisticPanel implements ActionListener 
 	
 	private static final long serialVersionUID = -154560067788983461L;
 	
-	private static final String collectionsStr = SolrMeterConfiguration.getProperty("solr.collection.names", null);
-	
 	private String activeCollection = "";
 
-	private static final List<String> collections;
+	private List<String> collections;
 	
 	private enum cacheTypes {
 		documentCache,
@@ -173,16 +169,8 @@ public class CacheHistoryPanel extends StatisticPanel implements ActionListener 
 	 * Plot of the above chart
 	 */
 	private XYPlot plot;
-	
-	static {
-		List<String> _collections = new ArrayList<>();
-		stream(ofNullable(collectionsStr).orElse(SINGLE_COLLECTION).split("\\,")).map(String::trim).forEach(_collections::add);
-		collections = Collections.unmodifiableList(_collections);
-	} 
-	
-	{
-		activeCollection = collections.get(0);
 		
+	{		
 		cumulativeDataMethodMapper = new HashMap<>();
 		cumulativeDataMethodMapper.put(cacheTypes.documentCache.toString(), () -> statistic.getDocumentCacheCumulativeData());
 		cumulativeDataMethodMapper.put(cacheTypes.fieldValueCache.toString(), () -> statistic.getFieldValueCacheCumulativeData());
@@ -244,6 +232,8 @@ public class CacheHistoryPanel extends StatisticPanel implements ActionListener 
 	public CacheHistoryPanel(CacheHistoryStatistic statistic) {
 		super();
 		this.statistic = statistic;
+		collections = statistic.getCollections();
+		activeCollection = collections.isEmpty() ? SINGLE_COLLECTION : "";
 		this.xyDataset = new DefaultXYDataset();
 		this.setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
 		this.add(this.createLeftPanel());
@@ -290,14 +280,22 @@ public class CacheHistoryPanel extends StatisticPanel implements ActionListener 
 		JPanel panel = new RoundedBorderJPanel("Cumulative Data");
 		panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
 	
-		collections.forEach(collectionName -> {
+		if (collections.isEmpty()) {
 			cumulativeLookupsInfoPanel = new InfoPanel(I18n.get(PREFIX + "Lookups"));
 			cumulativeHitsInfoPanel = new InfoPanel(I18n.get(PREFIX + "Hits"));
 			cumulativeHitRatioInfoPanel = new InfoPanel(I18n.get(PREFIX + "HitRatio"));
 			cumulativeInsertsInfoPanel = new InfoPanel(I18n.get(PREFIX + "Inserts"));
 			cumulativeEvictionsInfoPanel = new InfoPanel(I18n.get(PREFIX + "Evictions"));
-		});
-				
+		} else {
+			collections.forEach(collectionName -> {
+				cumulativeLookupsInfoPanel = new InfoPanel(I18n.get(PREFIX + "Lookups"));
+				cumulativeHitsInfoPanel = new InfoPanel(I18n.get(PREFIX + "Hits"));
+				cumulativeHitRatioInfoPanel = new InfoPanel(I18n.get(PREFIX + "HitRatio"));
+				cumulativeInsertsInfoPanel = new InfoPanel(I18n.get(PREFIX + "Inserts"));
+				cumulativeEvictionsInfoPanel = new InfoPanel(I18n.get(PREFIX + "Evictions"));
+			});
+		}
+		
 		panel.add(cumulativeLookupsInfoPanel);
 		panel.add(cumulativeHitsInfoPanel);
 		panel.add(cumulativeHitRatioInfoPanel);
@@ -435,9 +433,12 @@ public class CacheHistoryPanel extends StatisticPanel implements ActionListener 
 	 * @param key is the last part of the i18n key
 	 */
 	private void changeChartTitle(String key) {
-		char[] collectionName = activeCollection.toCharArray();
-		collectionName[0] = Character.toUpperCase(collectionName[0]);
+		char[] collectionName = Optional.ofNullable(activeCollection.toCharArray()).orElse(" ".toCharArray());
 		
+		if (collectionName.length > 0) {
+			collectionName[0] = Character.toUpperCase(collectionName[0]);
+		}
+
 		chart.setTitle(String.valueOf(collectionName) + " " + I18n.get(PREFIX + key));
 	}
 	

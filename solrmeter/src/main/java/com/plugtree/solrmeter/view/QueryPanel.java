@@ -393,7 +393,7 @@ public class QueryPanel extends StatisticPanel {
     return integerFieldRows.getInteger();
   }
   
-  public void showError(QueryException exception) {
+  public void showError(Exception exception) {
     jTextAreaError.setText(SwingUtils.getStackTraceString(exception));
     jScrollPaneError.setVisible(true);
     outputPanel.setVisible(false);
